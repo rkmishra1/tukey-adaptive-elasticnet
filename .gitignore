@@ -1,0 +1,9 @@
+.Rhistory
+.RData
+.Rproj.user/
+results/*.csv
+figures/*.png
+figures/*.jpg
+*.DS_Store
+*.pdf
+Tukey_Adaptive_Elasticnet.R
