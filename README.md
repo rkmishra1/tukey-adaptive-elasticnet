@@ -1,50 +1,100 @@
-# Tukey Adaptive Elasticnet Simulations
+# Tukey Adaptive Elastic Net
 
-This repository contains R code for the computational study of the Tukey adaptive Elasticnet estimator (`Tukey-AdEnet`) fitted by proximal AdaGrad and tuned by robust BIC.
+> Robust sparse regression via Tukey's biweight loss + adaptive elastic net penalty, fitted by proximal AdaGrad and tuned by robust BIC.
 
-The code follows the manuscript setup:
+![R](https://img.shields.io/badge/R-%3E%3D4.0-276DC3?logo=r&logoColor=white)
+![Status](https://img.shields.io/badge/status-research-orange)
+![Methods](https://img.shields.io/badge/competitors-7%20methods-blueviolet)
+![Configs](https://img.shields.io/badge/configurations-81-informational)
 
-- Linear model `y = X beta + e`.
-- AR(1) Gaussian design with correlations `rho = 0.30, 0.60, 0.80`.
-- Active set size `s = 3 * floor(p / 9)`.
-- Three scenarios: clean data, response contamination, and combined response/design contamination.
-- Three dimensional regimes: `zeta_1_2`, `zeta_2_3`, and `zeta_5_6`.
-- RBIC selection over a two-dimensional `(lambda1, lambda2)` grid for `Tukey-AdEnet`.
+---
 
-## Files
+## Overview
 
-- `R/tukey_adenet.R`: Tukey loss, gradient, proximal AdaGrad estimator, adaptive weights, and RBIC tuning.
-- `R/simulate_data.R`: data-generating mechanisms and manuscript simulation grid.
-- `R/metrics.R`: MSPE and variable-selection metrics.
-- `R/competitors.R`: wrappers for AdL, AdEnet, LAD-Lasso, Tukey-AdL, S-LTS, R-LARS, and Tukey-AdEnet.
-- `scripts/run_simulation.R`: command-line simulation runner.
-- `scripts/install_packages.R`: installs comparison-method packages from CRAN.
-- `scripts/smoke_test.R`: small quick check that the estimator and RBIC tuning run.
-- `scripts/make_boxplots.R`: creates MSPE boxplots from a raw results CSV.
+This repository provides the full simulation study accompanying the manuscript on the **Tukey-AdEnet** estimator — a robust, penalized regression method designed for sparse linear models under outlier contamination.
 
-## Dependencies
+Classical penalized estimators (Lasso, Elastic Net, adaptive variants) break down when responses or design points are corrupted. **Tukey-AdEnet** replaces the squared loss with Tukey's redescending biweight, applies adaptive elastic net penalties, and selects tuning parameters via a **robust BIC (RBIC)** criterion — remaining consistent under contamination while retaining the variable-selection properties of the elastic net.
+
+**Key properties:**
+- Redescending influence function — outliers are down-weighted, not just shrunk
+- Adaptive weights from an initial robust fit produce oracle-consistent selection
+- Proximal AdaGrad optimizer handles the non-convex, non-smooth objective
+- RBIC over a 2-D `(λ₁, λ₂)` grid avoids cross-validation under contamination
+- Scales to high-dimensional regimes (`p > n`)
+
+---
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Quick Check](#quick-check)
+- [Simulation Design](#simulation-design)
+- [Usage](#usage)
+  - [Full Manuscript Run](#full-manuscript-run)
+  - [Pilot Run](#pilot-run)
+  - [Method Subset](#method-subset)
+  - [Boxplots](#boxplots)
+- [Project Structure](#project-structure)
+- [Output Columns](#output-columns)
+- [Method Details](#method-details)
+- [Competing Methods](#competing-methods)
+
+---
+
+## Installation
+
+Install all R package dependencies in one step:
 
 ```sh
 Rscript scripts/install_packages.R
 ```
 
-The full seven-method comparison needs `glmnet`, `rqPen`, `robustHD`, and `robustbase`. If a package is missing, `scripts/run_simulation.R` records that method as skipped by default. For manuscript runs, use `--missing_action=stop` so missing packages stop the job immediately.
+**Required packages:** `glmnet`, `rqPen`, `robustHD`, `robustbase`
+
+> If a package is missing, `run_simulation.R` skips that method by default. For manuscript-grade runs pass `--missing_action=stop` to fail fast on any missing dependency.
+
+---
 
 ## Quick Check
+
+Verify the estimator and RBIC tuning work before committing to a full run:
 
 ```sh
 Rscript scripts/smoke_test.R
 ```
 
-## Full Manuscript Grid
+---
 
-The full study uses 200 replications across all 81 configurations. This is computationally expensive because each replication fits a two-dimensional RBIC grid.
+## Simulation Design
+
+The study follows the linear model **y = Xβ + ε** across a full factorial grid of 81 configurations:
+
+| Factor | Levels |
+|---|---|
+| AR(1) correlation `ρ` | 0.30, 0.60, 0.80 |
+| Dimensional regime | `ζ₁₂` (p<n), `ζ₂₃` (p≈n), `ζ₅₆` (p>n) |
+| Contamination scenario | Clean, response only, response + design |
+| Active set | `s = 3 × ⌊p/9⌋` nonzero coefficients |
+| Replications | 200 per configuration |
+
+---
+
+## Usage
+
+### Full Manuscript Run
 
 ```sh
-Rscript scripts/run_simulation.R --reps=200 --missing_action=stop --output_dir=results
+Rscript scripts/run_simulation.R \
+  --reps=200 \
+  --missing_action=stop \
+  --output_dir=results
 ```
 
-For a smaller pilot run:
+> **Note:** The full grid (200 reps × 81 configs × 7 methods × 2-D RBIC) is computationally intensive. Plan accordingly or run on a cluster.
+
+### Pilot Run
+
+A smaller run for testing and exploration:
 
 ```sh
 Rscript scripts/run_simulation.R \
@@ -59,45 +109,102 @@ Rscript scripts/run_simulation.R \
   --output_dir=results
 ```
 
-To run only a subset of methods:
+### Method Subset
+
+Run only a specific subset of methods:
 
 ```sh
-Rscript scripts/run_simulation.R --methods=AdL,AdEnet,Tukey-AdL,Tukey-AdEnet --reps=10
+Rscript scripts/run_simulation.R \
+  --methods=AdL,AdEnet,Tukey-AdL,Tukey-AdEnet \
+  --reps=10
 ```
 
-The runner writes two CSV files:
+### Boxplots
 
-- `comparison_raw_*.csv`: one row per method and replication.
-- `comparison_summary_*.csv`: manuscript-style averages by method and configuration.
-
-## Boxplots
+Generate MSPE boxplots from a completed results CSV:
 
 ```sh
-Rscript scripts/make_boxplots.R --raw=results/comparison_raw_YYYYMMDD_HHMMSS.csv --output_dir=figures
+Rscript scripts/make_boxplots.R \
+  --raw=results/comparison_raw_YYYYMMDD_HHMMSS.csv \
+  --output_dir=figures
 ```
 
-## Main Output Columns
+---
 
-- `C`: number of true zero coefficients estimated as zero.
-- `IC`: number of true nonzero coefficients incorrectly estimated as zero.
-- `MSPE`: `(beta_hat - beta_true)' Sigma (beta_hat - beta_true)` with AR(1) `Sigma`.
-- `lambda1`, `lambda2`: RBIC-selected tuning parameters.
-- `criterion`: BIC/RBIC value for the selected model, depending on the method.
-- `converged`: whether proximal AdaGrad met the stopping tolerance.
+## Project Structure
 
-## Notes
-
-The estimator uses the Tukey biweight score
-
-```text
-psi(u) = u * (1 - (u / d)^2)^2 * I(|u| <= d)
+```
+.
+├── R/
+│   ├── tukey_adenet.R      # Tukey loss, gradient, proximal AdaGrad, RBIC
+│   ├── simulate_data.R     # Data-generating mechanisms and simulation grid
+│   ├── metrics.R           # MSPE and variable-selection metrics (C, IC)
+│   └── competitors.R       # Wrappers for all seven comparison methods
+└── scripts/
+    ├── run_simulation.R    # Command-line simulation runner
+    ├── install_packages.R  # One-step dependency installer
+    ├── smoke_test.R        # Quick sanity check
+    └── make_boxplots.R     # MSPE boxplot generator
 ```
 
-and the coordinate-wise proximal AdaGrad update
+---
 
-```text
-u_j    = beta_j - eta_j * grad_j
-beta_j = sign(u_j) max(|u_j| - eta_j lambda1 w_j, 0) / (1 + eta_j lambda2)
+## Output Columns
+
+The runner writes two CSV files to `--output_dir`:
+
+| File | Description |
+|---|---|
+| `comparison_raw_*.csv` | One row per method per replication |
+| `comparison_summary_*.csv` | Manuscript-style averages by method and configuration |
+
+**Column reference:**
+
+| Column | Description |
+|---|---|
+| `C` | True zero coefficients correctly estimated as zero |
+| `IC` | True nonzero coefficients incorrectly estimated as zero (false negatives) |
+| `MSPE` | `(β̂ − β)ᵀ Σ (β̂ − β)` with AR(1) `Σ` |
+| `lambda1` | RBIC-selected L1 tuning parameter |
+| `lambda2` | RBIC-selected L2 tuning parameter |
+| `criterion` | BIC or RBIC value at the selected model |
+| `converged` | Whether proximal AdaGrad met the stopping tolerance |
+
+---
+
+## Method Details
+
+**Loss function** — Tukey biweight score:
+
+```
+ψ(u) = u · (1 − (u/d)²)² · 𝟙(|u| ≤ d)
 ```
 
-If the `robustbase` package is installed and `p < n`, the initialization uses `lmrob`. Otherwise, the code falls back to ridge initialization so the high-dimensional settings remain runnable without extra package requirements.
+**Coordinate-wise proximal AdaGrad update:**
+
+```
+u_j    = β_j − η_j · ∇_j
+β_j    = sign(u_j) · max(|u_j| − η_j λ₁ w_j, 0) / (1 + η_j λ₂)
+```
+
+where `w_j` are adaptive weights derived from an initial robust fit, and `η_j` is the per-coordinate AdaGrad learning rate.
+
+**Initialization:** Uses `lmrob` (from `robustbase`) when `p < n`; falls back to ridge initialization for high-dimensional settings so all regimes remain runnable without strict package requirements.
+
+---
+
+## Competing Methods
+
+| Method | Description |
+|---|---|
+| `AdL` | Adaptive Lasso |
+| `AdEnet` | Adaptive Elastic Net |
+| `LAD-Lasso` | Least Absolute Deviations Lasso |
+| `Tukey-AdL` | Tukey loss + Adaptive Lasso |
+| `S-LTS` | S-estimator / Least Trimmed Squares |
+| `R-LARS` | Robust LARS |
+| `Tukey-AdEnet` | **This work** |
+
+---
+
+*Correspondence: open an issue for questions about the simulation code.*
