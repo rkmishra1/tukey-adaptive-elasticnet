@@ -16,7 +16,7 @@ This repository provides the full simulation study accompanying the manuscript o
 Classical penalized estimators (Lasso, Elastic Net, adaptive variants) break down when responses or design points are corrupted. **Tukey-AdEnet** replaces the squared loss with Tukey's redescending biweight, applies adaptive elastic net penalties, and selects tuning parameters via a **robust BIC (RBIC)** criterion — remaining consistent under contamination while retaining the variable-selection properties of the elastic net.
 
 **Key properties:**
-- Redescending influence function — outliers are down-weighted, not just shrunk
+- Redescending influence function — outliers are down-weighted *to zero* beyond breakdown point `d`
 - Adaptive weights from an initial robust fit produce oracle-consistent selection
 - Proximal AdaGrad optimizer handles the non-convex, non-smooth objective
 - RBIC over a 2-D `(λ₁, λ₂)` grid avoids cross-validation under contamination
@@ -24,50 +24,62 @@ Classical penalized estimators (Lasso, Elastic Net, adaptive variants) break dow
 
 ---
 
-## Table of Contents
+## Fitting Pipeline
 
-- [Installation](#installation)
-- [Quick Check](#quick-check)
-- [Simulation Design](#simulation-design)
-- [Usage](#usage)
-  - [Full Manuscript Run](#full-manuscript-run)
-  - [Pilot Run](#pilot-run)
-  - [Method Subset](#method-subset)
-  - [Boxplots](#boxplots)
-- [Project Structure](#project-structure)
-- [Output Columns](#output-columns)
-- [Method Details](#method-details)
-- [Competing Methods](#competing-methods)
+<p align="center">
+  <img src="docs/figures/pipeline.png" width="840" alt="Tukey-AdEnet fitting pipeline"/>
+  <br><em>Figure 1 — Four-stage pipeline: robust initialisation (lmrob / ridge) → adaptive weights → RBIC grid search → proximal AdaGrad iterations</em>
+</p>
 
 ---
 
-## Installation
+## Why Tukey's Biweight?
 
-Install all R package dependencies in one step:
+The biweight loss **hard-zeros the influence of any residual beyond the tuning constant `d`** — unlike OLS (unbounded) or Huber (bounded but non-redescending). This gives the estimator a positive breakdown point even under leverage contamination.
 
-```sh
-Rscript scripts/install_packages.R
+<p align="center">
+  <img src="docs/figures/loss_influence.png" width="840" alt="Loss and influence function comparison"/>
+  <br><em>Figure 2 — Left: Tukey biweight loss stays bounded and flat for large residuals. Right: influence function redescends exactly to zero at |r| = d (dashed verticals), providing hard resistance to extreme outliers.</em>
+</p>
+
+The Tukey score function:
+
 ```
-
-**Required packages:** `glmnet`, `rqPen`, `robustHD`, `robustbase`
-
-> If a package is missing, `run_simulation.R` skips that method by default. For manuscript-grade runs pass `--missing_action=stop` to fail fast on any missing dependency.
-
----
-
-## Quick Check
-
-Verify the estimator and RBIC tuning work before committing to a full run:
-
-```sh
-Rscript scripts/smoke_test.R
+ψ(u) = u · (1 − (u/d)²)² · 𝟙(|u| ≤ d)
 ```
 
 ---
 
-## Simulation Design
+## Penalisation & Tuning
 
-The study follows the linear model **y = Xβ + ε** across a full factorial grid of 81 configurations:
+Adaptive weights `ŵ_j = 1/|β̃_j|` concentrate the L1 penalty on noise variables, shrinking them to exact zeros while leaving signal variables lightly penalised. The 2-D `(λ₁, λ₂)` pair is chosen by minimising RBIC over a warm-started grid.
+
+<p align="center">
+  <img src="docs/figures/penalty_rbic.png" width="840" alt="Regularisation path and RBIC surface"/>
+  <br><em>Figure 3 — Left: coefficient paths (noise variables zero out early under heavy adaptive weights). Right: RBIC surface with selected (λ₁*, λ₂*) marked.</em>
+</p>
+
+**Coordinate-wise proximal AdaGrad update:**
+
+```
+u_j  = β_j − η_j · ∇_j
+β_j  = sign(u_j) · max(|u_j| − η_j λ₁ ŵ_j, 0) / (1 + η_j λ₂)
+```
+
+---
+
+## Simulation Results
+
+### Performance across 7 methods (ζ₂₃ regime, ρ = 0.60, response + design contamination, δ = 10%)
+
+<p align="center">
+  <img src="docs/figures/simulation_metrics.png" width="860" alt="Simulation performance metrics"/>
+  <br><em>Figure 4 — Tukey-AdEnet (blue) leads on all three metrics: highest correct zeros (C ↑), fewest false negatives (IC ↓), lowest median MSPE (↓).</em>
+</p>
+
+### Simulation Design
+
+The study follows **y = Xβ + ε** across a full factorial grid of 81 configurations:
 
 | Factor | Levels |
 |---|---|
@@ -76,6 +88,34 @@ The study follows the linear model **y = Xβ + ε** across a full factorial grid
 | Contamination scenario | Clean, response only, response + design |
 | Active set | `s = 3 × ⌊p/9⌋` nonzero coefficients |
 | Replications | 200 per configuration |
+
+### Output Metrics
+
+| Column | Description |
+|---|---|
+| `C` | True zero coefficients correctly estimated as zero ↑ |
+| `IC` | True nonzero coefficients incorrectly zeroed (false negatives) ↓ |
+| `MSPE` | `(β̂ − β)ᵀ Σ (β̂ − β)` with AR(1) `Σ` ↓ |
+
+---
+
+## Installation
+
+```sh
+Rscript scripts/install_packages.R
+```
+
+**Required packages:** `glmnet`, `rqPen`, `robustHD`, `robustbase`
+
+> Missing packages cause that method to be skipped by default. Pass `--missing_action=stop` for manuscript-grade runs.
+
+---
+
+## Quick Check
+
+```sh
+Rscript scripts/smoke_test.R
+```
 
 ---
 
@@ -90,11 +130,9 @@ Rscript scripts/run_simulation.R \
   --output_dir=results
 ```
 
-> **Note:** The full grid (200 reps × 81 configs × 7 methods × 2-D RBIC) is computationally intensive. Plan accordingly or run on a cluster.
+> The full grid (200 reps × 81 configs × 7 methods × 2-D RBIC) is computationally intensive — plan for cluster use.
 
 ### Pilot Run
-
-A smaller run for testing and exploration:
 
 ```sh
 Rscript scripts/run_simulation.R \
@@ -111,8 +149,6 @@ Rscript scripts/run_simulation.R \
 
 ### Method Subset
 
-Run only a specific subset of methods:
-
 ```sh
 Rscript scripts/run_simulation.R \
   --methods=AdL,AdEnet,Tukey-AdL,Tukey-AdEnet \
@@ -120,8 +156,6 @@ Rscript scripts/run_simulation.R \
 ```
 
 ### Boxplots
-
-Generate MSPE boxplots from a completed results CSV:
 
 ```sh
 Rscript scripts/make_boxplots.R \
@@ -137,59 +171,16 @@ Rscript scripts/make_boxplots.R \
 .
 ├── R/
 │   ├── tukey_adenet.R      # Tukey loss, gradient, proximal AdaGrad, RBIC
-│   ├── simulate_data.R     # Data-generating mechanisms and simulation grid
-│   ├── metrics.R           # MSPE and variable-selection metrics (C, IC)
+│   ├── simulate_data.R     # DGP and simulation grid
+│   ├── metrics.R           # MSPE, C, IC
 │   └── competitors.R       # Wrappers for all seven comparison methods
-└── scripts/
-    ├── run_simulation.R    # Command-line simulation runner
-    ├── install_packages.R  # One-step dependency installer
-    ├── smoke_test.R        # Quick sanity check
-    └── make_boxplots.R     # MSPE boxplot generator
+├── scripts/
+│   ├── run_simulation.R    # CLI simulation runner
+│   ├── install_packages.R  # One-step dependency installer
+│   ├── smoke_test.R        # Sanity check
+│   └── make_boxplots.R     # MSPE boxplot generator
+└── docs/figures/           # Figures embedded in this README
 ```
-
----
-
-## Output Columns
-
-The runner writes two CSV files to `--output_dir`:
-
-| File | Description |
-|---|---|
-| `comparison_raw_*.csv` | One row per method per replication |
-| `comparison_summary_*.csv` | Manuscript-style averages by method and configuration |
-
-**Column reference:**
-
-| Column | Description |
-|---|---|
-| `C` | True zero coefficients correctly estimated as zero |
-| `IC` | True nonzero coefficients incorrectly estimated as zero (false negatives) |
-| `MSPE` | `(β̂ − β)ᵀ Σ (β̂ − β)` with AR(1) `Σ` |
-| `lambda1` | RBIC-selected L1 tuning parameter |
-| `lambda2` | RBIC-selected L2 tuning parameter |
-| `criterion` | BIC or RBIC value at the selected model |
-| `converged` | Whether proximal AdaGrad met the stopping tolerance |
-
----
-
-## Method Details
-
-**Loss function** — Tukey biweight score:
-
-```
-ψ(u) = u · (1 − (u/d)²)² · 𝟙(|u| ≤ d)
-```
-
-**Coordinate-wise proximal AdaGrad update:**
-
-```
-u_j    = β_j − η_j · ∇_j
-β_j    = sign(u_j) · max(|u_j| − η_j λ₁ w_j, 0) / (1 + η_j λ₂)
-```
-
-where `w_j` are adaptive weights derived from an initial robust fit, and `η_j` is the per-coordinate AdaGrad learning rate.
-
-**Initialization:** Uses `lmrob` (from `robustbase`) when `p < n`; falls back to ridge initialization for high-dimensional settings so all regimes remain runnable without strict package requirements.
 
 ---
 
