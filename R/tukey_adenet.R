@@ -35,10 +35,10 @@ soft_threshold <- function(z, threshold) {
 
 mad_sigma <- function(residuals) {
   sigma <- stats::mad(as.numeric(residuals), center = 0, constant = 1.4826)
-  if (!is.finite(sigma) || sigma <= .Machine$double.eps) {
+  if (!is.finite(sigma) || sigma <= 1e-4) {
     sigma <- stats::sd(as.numeric(residuals))
   }
-  if (!is.finite(sigma) || sigma <= .Machine$double.eps) sigma <- 1
+  if (!is.finite(sigma) || sigma <= 1e-4) sigma <- 1e-4
   sigma
 }
 
