@@ -42,11 +42,12 @@ The biweight loss **hard-zeros the influence of any residual beyond the tuning c
   <br><em>Figure 2 — Left: Tukey biweight loss stays bounded and flat for large residuals. Right: influence function redescends exactly to zero at |r| = d (dashed verticals), providing hard resistance to extreme outliers.</em>
 </p>
 
-The Tukey score function:
+The figure below shows the full Tukey family — loss, first derivative (influence), and second derivative — illustrating the hard cutoff at $\pm d$:
 
-```
-ψ(u) = u · (1 − (u/d)²)² · 𝟙(|u| ≤ d)
-```
+<p align="center">
+  <img src="docs/figures/tukey_family.png" width="700" alt="Tukey family: loss, first and second derivative"/>
+  <br><em>Figure 3 — Tukey family of functions. The first derivative T'_d(u) redescends to exactly zero at |u| = d; the second derivative T''_d(u) shows the non-convex curvature that motivates proximal AdaGrad over Newton-type solvers.</em>
+</p>
 
 ---
 
