@@ -212,27 +212,6 @@ $$\mathcal{T}_{d}(u) = \begin{cases}
 \dfrac{d^2}{6} & \text{if } |u| > d.
 \end{cases}$$
 
-**Derivative / biweight influence (psi) function** $\mathcal{T}'_d(u)$:
-
-$$\mathcal{T}_{d}^{\prime}(u) = \frac{d}{du}\mathcal{T}_{d}(u) = \begin{cases}
-u \left(1 - \left(\dfrac{u}{d}\right)^2\right)^2, & \text{if } |u| \leq d, \\[6pt]
-0, & \text{if } |u| > d.
-\end{cases}$$
-
-**Objective Function**:
-
-$$L_{\mathcal{T}\mathrm{adenet}} = \bigg(1+\dfrac{\lambda_2}{n}\bigg)\Bigg[\sum_{i=1}^{n}\mathcal{T}_{d}\bigg(\dfrac{y_{i} - \mathbf{x}_{i}^{T}\beta}{\hat{\sigma}}\bigg) + \sum_{j=1}^{p}\Big(\hat{w}_{j}\lambda_1|\beta_{j}| + \dfrac{\lambda_2}{2}\beta_{j}^{2}\Big)\Bigg]$$
-
-We evaluate the prediction accuracy (MSPE) of the Tukey-AdEnet estimator on a highly correlated predictor grid ($\rho=0.8$) under heavy-tailed $t(2)$ errors:
-- **1D Kappa Profile**: We trace the MSPE profile as the robust tuning constant $\kappa$ ($d$) varies from $1.5$ to $8.0$ (holding $\lambda_1=0.15, \lambda_2=0.5$). Small $\kappa$ values down-weight too many valid observations (loss of efficiency), whereas large $\kappa$ values fail to suppress outliers (loss of robustness). The optimal performance is achieved near the standard setting of $\kappa=4.685$.
-- **2D L2-Kappa Heatmap**: We construct a joint 2D parameter grid over $\lambda_2 \in [0.0, 2.0]$ and $\kappa \in [1.5, 8.0]$ to capture the interaction between collinearity stabilization and outlier resistance. The optimal performance region forms a stable valley where L2 penalty $\lambda_2$ stabilizes predictions under correlation while Tukey constant $\kappa$ controls outlier sensitivity.
-
-<p align="center">
-  <img src="docs/figures/fig_kappa_profile.png" width="45%" alt="1D Kappa Profile"/>
-  <img src="docs/figures/fig_l2_kappa_heatmap.png" width="50%" alt="2D L2-Kappa Heatmap"/>
-  <br><em>Figure 10 — Tukey-AdEnet sensitivity analysis: (Left) 1D Kappa profile showing U-shaped prediction error curve; (Right) 2D L2-Kappa joint error heatmap.</em>
-</p>
-
 ---
 
 ### 6. Tuning Cost & Computational Complexity
