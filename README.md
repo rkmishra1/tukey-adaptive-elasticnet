@@ -203,6 +203,34 @@ To measure and compare the **estimation errors** ($\|\hat{\beta} - \beta\|$) und
 
 ---
 
+### 5. Tuning Parameter Sensitivity Analysis
+We conduct a sensitivity analysis on Tukey-AdEnet's primary tuning parameters: the L1 penalty ($\lambda_1$), the L2 penalty ($\lambda_2$), and the Tukey biweight loss constant ($d$).
+* **Tukey biweight loss function $\mathcal{T}_d(u)$**:
+$$\mathcal{T}_{d}(u) = \begin{cases}
+\dfrac{d^2}{6}\bigg\{1 - \bigg[1 - \bigg(\dfrac{u}{d}\bigg)^2\bigg]^{3}\bigg\} \hspace{18pt} & \mbox{ if } |u| \leq d,\\
+\dfrac{d^2}{6} \hspace{128pt} & \mbox{ if } |u| > d.
+\end{cases}$$
+* **Derivative / biweight influence/psi function $\mathcal{T}'_d(u)$**:
+$$\mathcal{T}_{d}^{'}(u) = \frac{d}{du} \mathcal{T}_{d}(u) =
+\begin{cases}
+u \left(1 - \left( \frac{u}{d} \right)^2 \right)^2, & \text{if } |u| \leq d, \\
+0, & \text{if } |u| > d.
+\end{cases}$$
+* **Objective Function**:
+$$L_{\mathcal{T}\mathrm{adenet}} = \bigg(1+\dfrac{\lambda_2}{n}\bigg)\Bigg[\sum_{i=1}^{n}\mathcal{T}_{d}\bigg(\dfrac{y_{i} - \mathbf{x}_{i}^{T}\beta}{\hat{\sigma}}\bigg) + \sum_{j=1}^{p}\Big(\hat{w}_{j}\lambda_1|\beta_{j}| + \dfrac{\lambda_2}{2}\beta_{j}^{2}\Big)\Bigg]$$
+
+We evaluate the prediction accuracy (MSPE) of the Tukey-AdEnet estimator on a highly correlated predictor grid ($\rho=0.8$) under heavy-tailed $t(2)$ errors:
+- **Tuning Constant $d$**: Small $d$ values down-weight too many valid observations (loss of efficiency), whereas large $d$ values fail to suppress outliers (loss of robustness). The optimal performance is achieved near $d=4.685$.
+- **L1 Penalty $\lambda_1$**: Controls sparsity. Small values fail to perform variable selection, while excessive values over-shrink important signal variables.
+- **L2 Penalty $\lambda_2$**: Essential for collinearity. The pure Lasso case ($\lambda_2=0.0$) yields unstable predictions, whereas introducing L2 regularization ($\lambda_2 \ge 0.2$) stabilizes the optimization path.
+
+<p align="center">
+  <img src="docs/figures/sensitivity_analysis.png" width="960" alt="Tuning parameter sensitivity analysis curves"/>
+  <br><em>Figure 9 — Tukey-AdEnet sensitivity analysis: Prediction MSPE curves with respect to tuning parameters d, lambda_1, and lambda_2.</em>
+</p>
+
+---
+
 ### 💡 Key Findings & Discussion
 1. **Best-in-Class Across All Metrics**: Tukey-AdEnet achieves the **lowest prediction error (SSPE)** on all three real datasets (achieving 5-fold to 6-fold error reduction over next-best methods) and the **lowest estimation error** ($L_2 = 4.50$) in simulation, while maintaining the **fewest false positives** (0.07 noise variables in simulation vs 7.90 for R-LARS and 7.50 for LAD-Lasso).
 2. **The Collinearity Trap for Lasso (Tukey-AdL vs Tukey-AdEnet)**: When predictors are highly correlated (as in `toxicity` and the simulation), Lasso-type penalties (`Tukey-AdL`) are highly unstable. Their estimation error blows up (L2 error of **825.00** in simulation) and prediction error spikes (SSPE of **115.00** on `toxicity`). By incorporating the L2 penalty, **Tukey-AdEnet** stabilizes estimation under severe collinearity.
