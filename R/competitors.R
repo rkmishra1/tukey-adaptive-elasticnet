@@ -1,7 +1,7 @@
 # Competitor estimators used in the computational study.
 
 available_methods <- function() {
-  c("AdL", "AdEnet", "LAD-Lasso", "Tukey-AdL", "S-LTS", "R-LARS", "Tukey-AdEnet")
+  c("AdL", "AdEnet", "HAdL", "Tukey-AdL", "S-LTS", "R-LARS", "Tukey-AdEnet")
 }
 
 required_package <- function(method) {
@@ -9,7 +9,7 @@ required_package <- function(method) {
     method,
     "AdL" = "glmnet",
     "AdEnet" = "glmnet",
-    "LAD-Lasso" = "rqPen",
+    "HAdL" = "hqreg",
     "S-LTS" = "robustHD",
     "R-LARS" = "robustHD",
     NULL
@@ -150,38 +150,54 @@ fit_adaptive_enet <- function(x,
   out
 }
 
-fit_lad_lasso <- function(x,
+fit_huber_adl <- function(x,
                           y,
                           nlambda = 100,
-                          zero_tol = 1e-8,
-                          max_iter = 5000) {
-  if (!requireNamespace("rqPen", quietly = TRUE)) {
-    stop("Package 'rqPen' is required.", call. = FALSE)
+                          zero_tol = 1e-8) {
+  if (!requireNamespace("hqreg", quietly = TRUE)) {
+    stop("Package 'hqreg' is required.", call. = FALSE)
   }
 
   x <- as.matrix(x)
   y <- as.numeric(y)
-  fit <- rqPen::rq.pen(
-    x = x,
+  p <- ncol(x)
+  
+  # Obtain robust adaptive weights
+  init <- initial_beta(x, y)
+  weights <- init$weights
+
+  fit <- hqreg::hqreg(
+    X = x,
     y = y,
-    tau = 0.5,
-    penalty = "LASSO",
+    method = "huber",
+    alpha = 1,
     nlambda = nlambda,
-    alg = "huber",
-    scalex = FALSE,
-    coef.cutoff = zero_tol,
-    max.iter = max_iter
+    penalty.factor = weights
   )
-  selected <- rqPen::qic.select(fit, method = "BIC")
-  beta <- as_beta_vector(selected$coefficients, ncol(x), zero_tol = zero_tol)
+
+  betas <- fit$beta[-1, , drop = FALSE]
+  
+  # Compute BIC
+  n <- nrow(x)
+  bics <- apply(betas, 2, function(b) {
+    r <- y - as.numeric(x %*% b)
+    g <- fit$gamma
+    h_loss <- ifelse(abs(r) <= g, 0.5 * r^2, g * (abs(r) - 0.5 * g))
+    df <- sum(abs(b) > zero_tol)
+    2 * sum(h_loss) + log(n) * df
+  })
+
+  best <- which.min(bics)
+  beta <- as.numeric(betas[, best])
+  beta[abs(beta) < zero_tol] <- 0
 
   list(
-    method = "LAD-Lasso",
+    method = "HAdL",
     beta = beta,
-    criterion = suppressWarnings(min(selected$ic, na.rm = TRUE)),
-    lambda = NA_real_,
-    lambda1 = NA_real_,
-    lambda2 = NA_real_,
+    criterion = bics[best],
+    lambda = fit$lambda[best],
+    lambda1 = fit$lambda[best],
+    lambda2 = 0,
     df = sum(abs(beta) > zero_tol),
     iterations = NA_integer_,
     converged = TRUE
@@ -366,11 +382,10 @@ fit_competitor <- function(method, x, y, opts) {
       nlambda = opts$glmnet_nlambda,
       zero_tol = opts$zero_tol
     ),
-    "LAD-Lasso" = fit_lad_lasso(
+    "HAdL" = fit_huber_adl(
       x, y,
-      nlambda = opts$lad_nlambda,
-      zero_tol = opts$zero_tol,
-      max_iter = opts$lad_max_iter
+      nlambda = opts$glmnet_nlambda,
+      zero_tol = opts$zero_tol
     ),
     "Tukey-AdL" = fit_tukey_adl(
       x, y,

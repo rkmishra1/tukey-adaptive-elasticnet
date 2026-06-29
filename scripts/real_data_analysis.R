@@ -82,7 +82,7 @@ run_dataset_benchmark <- function(X_orig, y_orig, p_noise, B = 20, dataset_name 
               dataset_name, nrow(X_orig), ncol(X_orig), p_noise))
   cat(sprintf("==================================================\n"))
   
-  methods <- c("AdL", "AdEnet", "LAD-Lasso", "S-LTS", "R-LARS", "Tukey-AdL", "Tukey-AdEnet")
+  methods <- c("AdL", "AdEnet", "HAdL", "S-LTS", "R-LARS", "Tukey-AdL", "Tukey-AdEnet")
   results_list <- list()
   
   p_orig <- ncol(X_orig)
@@ -178,7 +178,7 @@ run_correlated_simulation <- function(n = 100, p = 80, s = 10, rho = 0.80, B = 2
               n, p, s, rho))
   cat(sprintf("==================================================\n"))
   
-  methods <- c("AdL", "AdEnet", "LAD-Lasso", "S-LTS", "R-LARS", "Tukey-AdL", "Tukey-AdEnet")
+  methods <- c("AdL", "AdEnet", "HAdL", "S-LTS", "R-LARS", "Tukey-AdL", "Tukey-AdEnet")
   results_list <- list()
   
   # Sparse coefficient vector
@@ -306,7 +306,7 @@ write_csv(
 write_csv(sim_results$summary, file.path(res_dir, "correlated_simulation_summary.csv"))
 
 # Method ordering and themes
-method_order <- c("AdL", "AdEnet", "LAD-Lasso", "S-LTS", "R-LARS", "Tukey-AdL", "Tukey-AdEnet")
+method_order <- c("AdL", "AdEnet", "HAdL", "S-LTS", "R-LARS", "Tukey-AdL", "Tukey-AdEnet")
 plot_theme <- theme_minimal(base_size = 11) +
   theme(
     plot.title = element_text(face = "bold", size = 12),
