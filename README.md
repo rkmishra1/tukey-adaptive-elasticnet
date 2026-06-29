@@ -231,6 +231,28 @@ We evaluate the prediction accuracy (MSPE) of the Tukey-AdEnet estimator on a hi
 
 ---
 
+### 6. Tuning Cost & Computational Complexity
+We conduct a training/tuning wall-clock timing benchmark ($n=100, p=40$, 10-fold CV or 2D RBIC grid search) to measure model selection cost:
+
+| Method | Grid dimensions | Fits (BIC) | Time (BIC) (s) | Fits (CV) | Time (CV) (s) |
+|---|:---:|:---:|:---:|:---:|:---:|
+| `AdL` | 50 | 50 | 2.38 | 500 | 23.79 |
+| `AdEnet` | 50 &times; 3 | 150 | 1.24 | 1500 | 12.37 |
+| `LAD-Lasso` | 50 | 50 | 22.49 | 500 | 277.02 |
+| `S-LTS` | 4 | 4 | 27.96 | 40 | 365.91 |
+| `R-LARS` | 40 | 40 | 23.30 | 400 | 233.00 |
+| `Tukey-AdL` | 20 | 20 | 4.27 | 200 | 42.68 |
+| **`Tukey-AdEnet` (Ours)** | **20 &times; 4** | **80** | **1.54** | **800** | **4.94** |
+
+* **Key Takeaway**: Despite solving a non-convex, non-smooth robust objective under two regularization penalties, our custom proximal AdaGrad solver allows **Tukey-AdEnet** to complete a full 10-fold CV grid search in only **4.94 seconds**—representing a **74-fold speedup** over `S-LTS` and a **56-fold speedup** over `LAD-Lasso`.
+
+<p align="center">
+  <img src="docs/figures/tuning_cost_comparison.png" width="600" alt="Tuning cost comparison bar chart"/>
+  <br><em>Figure 10 — Tuning cost comparison: wall-clock execution time (seconds) under 10-fold CV or 2D RBIC grid search.</em>
+</p>
+
+---
+
 ### 💡 Key Findings & Discussion
 1. **Best-in-Class Across All Metrics**: Tukey-AdEnet achieves the **lowest prediction error (SSPE)** on all three real datasets (achieving 5-fold to 6-fold error reduction over next-best methods) and the **lowest estimation error** ($L_2 = 4.50$) in simulation, while maintaining the **fewest false positives** (0.07 noise variables in simulation vs 7.90 for R-LARS and 7.50 for LAD-Lasso).
 2. **The Collinearity Trap for Lasso (Tukey-AdL vs Tukey-AdEnet)**: When predictors are highly correlated (as in `toxicity` and the simulation), Lasso-type penalties (`Tukey-AdL`) are highly unstable. Their estimation error blows up (L2 error of **825.00** in simulation) and prediction error spikes (SSPE of **115.00** on `toxicity`). By incorporating the L2 penalty, **Tukey-AdEnet** stabilizes estimation under severe collinearity.
