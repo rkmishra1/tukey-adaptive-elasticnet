@@ -3,7 +3,7 @@
 # Timing experiment comparing grid search/tuning cost across methods.
 # Measures fits and wall-clock times under BIC/RBIC and 10-fold CV.
 
-source("R/tukey_adenet.R")
+library(tukeyAdEnet)
 source("R/competitors.R")
 
 library(tidyverse)

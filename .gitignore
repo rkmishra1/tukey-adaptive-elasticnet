@@ -7,3 +7,11 @@ figures/*.jpg
 *.DS_Store
 *.pdf
 Tukey_Adaptive_Elasticnet.R
+
+# R package build/check artifacts
+/*.tar.gz
+/*.Rcheck/
+/doc/
+/Meta/
+/NEWS.pdf
+

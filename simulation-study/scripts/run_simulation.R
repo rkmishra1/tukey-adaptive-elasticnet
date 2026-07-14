@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-source("R/tukey_adenet.R")
+library(tukeyAdEnet)
 source("R/simulate_data.R")
 source("R/metrics.R")
 source("R/competitors.R")
