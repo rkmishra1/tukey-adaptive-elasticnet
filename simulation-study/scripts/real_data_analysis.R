@@ -3,7 +3,7 @@
 # Real data analysis and correlated simulation comparing Tukey-AdEnet with competitors
 
 # Set paths and source package files
-source("R/tukey_adenet.R")
+library(tukeyAdEnet)
 source("R/simulate_data.R")
 source("R/metrics.R")
 source("R/competitors.R")

@@ -107,7 +107,7 @@ fit_adaptive_lasso <- function(x,
                                eps = 1e-4,
                                nlambda = 100,
                                zero_tol = 1e-8) {
-  beta0 <- as.numeric(ridge_initial_beta(as.matrix(x), as.numeric(y)))
+  beta0 <- as.numeric(tukeyAdEnet:::ridge_initial_beta(as.matrix(x), as.numeric(y)))
   weights <- pmin(1 / (abs(beta0) + eps)^gamma, 1e6)
   out <- fit_glmnet_bic(
     x = x,
@@ -128,7 +128,7 @@ fit_adaptive_enet <- function(x,
                               eps = 1e-4,
                               nlambda = 100,
                               zero_tol = 1e-8) {
-  beta0 <- as.numeric(ridge_initial_beta(as.matrix(x), as.numeric(y)))
+  beta0 <- as.numeric(tukeyAdEnet:::ridge_initial_beta(as.matrix(x), as.numeric(y)))
   weights <- pmin(1 / (abs(beta0) + eps)^gamma, 1e6)
 
   fits <- lapply(alphas, function(alpha) {
@@ -163,7 +163,7 @@ fit_huber_adl <- function(x,
   p <- ncol(x)
   
   # Obtain robust adaptive weights
-  init <- initial_beta(x, y)
+  init <- tukeyAdEnet:::initial_beta(x, y)
   weights <- init$weights
 
   fit <- hqreg::hqreg(
@@ -214,9 +214,9 @@ fit_tukey_adl <- function(x,
                           zero_tol = 1e-8) {
   x <- as.matrix(x)
   y <- as.numeric(y)
-  init <- initial_beta(x, y)
-  sigma <- mad_sigma(y - as.numeric(x %*% init$beta))
-  grid <- make_tuning_grid(
+  init <- tukeyAdEnet:::initial_beta(x, y)
+  sigma <- tukeyAdEnet:::mad_sigma(y - as.numeric(x %*% init$beta))
+  grid <- tukeyAdEnet:::make_tuning_grid(
     x = x,
     y = y,
     beta_init = init$beta,
@@ -227,7 +227,7 @@ fit_tukey_adl <- function(x,
     lambda2_factors = 0
   )
 
-  tuned <- tune_tukey_adenet_rbic(
+  tuned <- tukeyAdEnet::tukeyAdEnetRBIC(
     x = x,
     y = y,
     grid = grid,
@@ -333,9 +333,9 @@ fit_tukey_adenet_method <- function(x,
                                     zero_tol = 1e-8) {
   x <- as.matrix(x)
   y <- as.numeric(y)
-  init <- initial_beta(x, y)
-  sigma <- mad_sigma(y - as.numeric(x %*% init$beta))
-  grid <- make_tuning_grid(
+  init <- tukeyAdEnet:::initial_beta(x, y)
+  sigma <- tukeyAdEnet:::mad_sigma(y - as.numeric(x %*% init$beta))
+  grid <- tukeyAdEnet:::make_tuning_grid(
     x = x,
     y = y,
     beta_init = init$beta,
@@ -346,7 +346,7 @@ fit_tukey_adenet_method <- function(x,
     lambda2_factors = lambda2_factors
   )
 
-  tuned <- tune_tukey_adenet_rbic(
+  tuned <- tukeyAdEnet::tukeyAdEnetRBIC(
     x = x,
     y = y,
     grid = grid,

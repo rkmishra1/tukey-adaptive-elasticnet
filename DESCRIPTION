@@ -1,0 +1,39 @@
+Package: tukeyAdEnet
+Type: Package
+Title: Robust Adaptive Elastic Net Regression via Tukey's Biweight Loss
+Version: 0.1.0
+Authors@R: c(
+    person("Ramakrushna", "Mishra",
+           email = "rkmishra.stat@gmail.com",
+           role = c("aut", "cre", "cph"),
+           comment = "Indian Institute of Management Lucknow"))
+Description: Fits sparse linear regression models that are robust to outliers
+    in the response and in the design matrix. The estimator minimises a
+    redescending Tukey's biweight loss subject to an adaptive elastic net
+    penalty, combining the exact-zero downweighting of gross outliers with
+    the oracle variable-selection properties of adaptively weighted L1/L2
+    penalties. Models are fitted with a coordinate-wise proximal AdaGrad
+    algorithm and the regularisation parameters are selected automatically
+    by minimising a robust Bayesian information criterion (RBIC) over a
+    two-dimensional tuning grid, avoiding cross-validation under
+    contamination. See Maronna, Martin, Yohai & Salibian-Barrera (2019,
+    ISBN:978-1119214687) for background on redescending M-estimators and
+    Zou & Zhang (2009) <doi:10.1214/09-AOS699> for adaptive elastic net
+    penalisation.
+License: MIT + file LICENSE
+URL: https://github.com/rkmishra1/tukey-adaptive-elasticnet
+BugReports: https://github.com/rkmishra1/tukey-adaptive-elasticnet/issues
+Encoding: UTF-8
+Depends: R (>= 3.6.0)
+Imports:
+    graphics,
+    grDevices,
+    stats
+Suggests:
+    robustbase,
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+RoxygenNote: 7.3.1
