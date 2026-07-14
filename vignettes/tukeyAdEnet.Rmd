@@ -1,0 +1,115 @@
+---
+title: "Introduction to tukeyAdEnet"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to tukeyAdEnet}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4.5
+)
+```
+
+## Motivation
+
+Classical penalised regression estimators such as the lasso, elastic net,
+and their adaptive variants minimise a squared-error loss. Squared error is
+unbounded, so a single large outlier in the response, or a single leverage
+point in the design matrix, can dominate the objective and badly distort
+the fitted coefficients.
+
+**tukeyAdEnet** replaces the squared-error loss with Tukey's redescending
+biweight loss. Its derivative (the influence function) is exactly zero for
+standardised residuals beyond a tuning constant `d`, so observations far
+enough from the bulk of the data have *no* influence on the fit, rather
+than merely a bounded one (as with, say, Huber loss). Combined with an
+adaptive elastic net penalty, this gives a sparse estimator with a positive
+breakdown point.
+
+```{r}
+library(tukeyAdEnet)
+
+u <- seq(-8, 8, length.out = 401)
+op <- par(mfrow = c(1, 2))
+plot(u, tukeyRho(u), type = "l", main = "Biweight loss", ylab = expression(rho(u)))
+plot(u, tukeyPsi(u), type = "l", main = "Influence function", ylab = expression(psi(u)))
+abline(v = c(-4.685, 4.685), lty = 2, col = "grey50")
+par(op)
+```
+
+## Fitting a single model
+
+`tukeyAdEnet()` fits the model at a given `(lambda1, lambda2)` pair. It
+returns adaptively weighted coefficients, using either a robust
+(`robustbase::lmrob()`, when available and `p < n`) or ridge initial fit to
+build the adaptive weights `w_j = 1 / |beta_init_j|`.
+
+```{r}
+set.seed(1)
+n <- 150
+p <- 12
+x <- matrix(rnorm(n * p), n, p)
+beta_true <- c(3, -3, 2, rep(0, p - 3))
+y <- as.numeric(x %*% beta_true + rnorm(n))
+
+# contaminate 10% of the responses with gross outliers
+contaminated <- sample(seq_len(n), size = round(0.1 * n))
+y[contaminated] <- y[contaminated] + rnorm(length(contaminated), mean = 30, sd = 5)
+
+fit <- tukeyAdEnet(x, y, lambda1 = 0.3, lambda2 = 0.05)
+print(fit)
+coef(fit)
+```
+
+For comparison, an ordinary least-squares fit on the same contaminated data
+is badly biased by the 10% outliers:
+
+```{r}
+ols <- coef(lm(y ~ x - 1))
+data.frame(
+  truth = beta_true,
+  tukeyAdEnet = as.numeric(fit$beta),
+  ols = as.numeric(ols)
+)
+```
+
+## Automatic tuning via robust BIC
+
+Cross-validation is itself sensitive to outliers landing in a held-out
+fold. `tukeyAdEnetRBIC()` instead searches a two-dimensional
+`(lambda1, lambda2)` grid and selects the pair minimising a robust BIC
+criterion (the biweight loss plus a `log(n)` penalty on the number of
+non-zero coefficients).
+
+```{r}
+tuned <- tukeyAdEnetRBIC(x, y, n_lambda1 = 15, lambda2_factors = c(0, 0.05, 0.2, 0.5))
+tuned
+coef(tuned)
+```
+
+```{r, fig.alt = "Robust BIC against lambda1, one curve per lambda2 value"}
+plot(tuned)
+```
+
+## Prediction
+
+Both `tukeyAdEnet` and `tukeyAdEnetRBIC` objects support `predict()` on new
+data:
+
+```{r}
+x_new <- matrix(rnorm(5 * p), 5, p)
+predict(tuned, newx = x_new)
+```
+
+## Notes on scaling
+
+`x` should not include an intercept column, and the elastic net penalty is
+not scale-invariant, so standardising the columns of `x` (e.g. with
+`scale()`) before fitting is recommended when predictors are not already
+on comparable scales.

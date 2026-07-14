@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-source("R/tukey_adenet.R")
+library(tukeyAdEnet)
 source("R/simulate_data.R")
 source("R/metrics.R")
 source("R/competitors.R")
@@ -14,9 +14,9 @@ dat <- generate_simulation_data(
   scenario = "response"
 )
 
-init <- initial_beta(dat$x, dat$y)
-sigma <- mad_sigma(dat$y - as.numeric(dat$x %*% init$beta))
-grid <- make_tuning_grid(
+init <- tukeyAdEnet:::initial_beta(dat$x, dat$y)
+sigma <- tukeyAdEnet:::mad_sigma(dat$y - as.numeric(dat$x %*% init$beta))
+grid <- tukeyAdEnet:::make_tuning_grid(
   x = dat$x,
   y = dat$y,
   beta_init = init$beta,
@@ -26,7 +26,7 @@ grid <- make_tuning_grid(
   lambda2_factors = c(0, 0.1)
 )
 
-tuned <- tune_tukey_adenet_rbic(
+tuned <- tukeyAdEnet::tukeyAdEnetRBIC(
   x = dat$x,
   y = dat$y,
   grid = grid,

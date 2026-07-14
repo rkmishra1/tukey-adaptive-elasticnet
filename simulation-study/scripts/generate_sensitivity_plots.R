@@ -3,7 +3,7 @@
 # Generates a 1D Kappa profile and a 2D L2-Kappa heatmap for Tukey-AdEnet.
 # Saves plots locally to docs/figures/ before they are pushed to GitHub.
 
-source("R/tukey_adenet.R")
+library(tukeyAdEnet)
 source("R/competitors.R")
 
 library(tidyverse)
@@ -52,9 +52,9 @@ sd_x[sd_x < 1e-10] <- 1
 X_scaled <- scale(X, center = mean_x, scale = sd_x)
 y_centered <- y - mean(y)
 
-init <- initial_beta(X_scaled, y_centered)
+init <- tukeyAdEnet:::initial_beta(X_scaled, y_centered)
 weights <- init$weights
-sigma <- mad_sigma(y_centered - as.numeric(X_scaled %*% init$beta))
+sigma <- tukeyAdEnet:::mad_sigma(y_centered - as.numeric(X_scaled %*% init$beta))
 
 # Test set
 test_Z <- matrix(rnorm(n * p), n, p)
@@ -74,7 +74,7 @@ d_grid <- seq(1.5, 8.0, length.out = 30)
 d_results <- tibble()
 
 for (d in d_grid) {
-  fit <- tukey_adenet_fit(X_scaled, y_centered, lambda1 = 0.15, lambda2 = 0.5,
+  fit <- tukeyAdEnet::tukeyAdEnet(X_scaled, y_centered, lambda1 = 0.15, lambda2 = 0.5,
                           beta_init = init$beta, weights = weights, sigma = sigma, d = d)
   preds <- as.numeric(test_X_scaled %*% fit$beta)
   mspe <- mean((test_y_centered - preds)^2)
@@ -110,7 +110,7 @@ heatmap_results <- tibble()
 
 for (l2 in lambda2_grid) {
   for (d in d_heatmap_grid) {
-    fit <- tukey_adenet_fit(X_scaled, y_centered, lambda1 = 0.15, lambda2 = l2,
+    fit <- tukeyAdEnet::tukeyAdEnet(X_scaled, y_centered, lambda1 = 0.15, lambda2 = l2,
                             beta_init = init$beta, weights = weights, sigma = sigma, d = d)
     preds <- as.numeric(test_X_scaled %*% fit$beta)
     mspe <- mean((test_y_centered - preds)^2)
